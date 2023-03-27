@@ -1007,13 +1007,13 @@ def main(args):
                     target, target_prior = torch.chunk(target, 2, dim=0)
 
                     # Compute instance loss
-                    loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                    pred_loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 
                     # Compute prior loss
                     prior_loss = F.mse_loss(model_pred_prior.float(), target_prior.float(), reduction="mean")
 
                     # Add the prior loss to the instance loss.
-                    loss = loss + args.prior_loss_weight * prior_loss
+                    loss = pred_loss + args.prior_loss_weight * prior_loss
                 else:
                     loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 
@@ -1040,7 +1040,20 @@ def main(args):
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
-            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+            if args.with_prior_preservation:
+                logs = {"loss/pred": pred_loss.detach().item(),
+                        "loss/prior": prior_loss.detach().item(),
+                        "loss/total": loss.detach().item(),
+                       }
+            else:
+                logs = {"loss/pred": loss.detach().item()}
+
+            if args.train_text_encoder:
+                logs["lr/unet"] = lr_scheduler.get_last_lr()[0]
+                logs["lr/text"] = lr_scheduler.get_last_lr()[1]
+            else:
+                logs["lr"] = lr_scheduler.get_last_lr()[0]
+
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
 
