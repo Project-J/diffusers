@@ -246,6 +246,24 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--log_name",
+        type=str,
+        default=None,
+        required=False,
+        help=(
+            "Name of log to identify experiment in reporting tool."
+        ),
+    )
+    parser.add_argument(
+        "--log_group",
+        type=str,
+        default=None,
+        required=False,
+        help=(
+            "Name of log group to aggregate experiments in reporting tool."
+        ),
+    )
+    parser.add_argument(
         "--mixed_precision",
         type=str,
         default=None,
@@ -644,7 +662,10 @@ def main():
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
     if accelerator.is_main_process:
-        accelerator.init_trackers("text2image-fine-tune", config=vars(args))
+        init_kwargs = {"wandb":{"settings":{"console": "off"},
+                                "name":f"{args.log_name}",
+                                "group":f"{args.log_group}"}}
+        accelerator.init_trackers("text2image-fine-tune", config=vars(args), init_kwargs=init_kwargs)
 
     # Train!
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
